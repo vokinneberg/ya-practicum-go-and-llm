@@ -1,0 +1,18 @@
+:root {
+    /* tweak as needed */
+    --slidev-code-font-size: 0.7rem;
+    --slidev-code-line-height: 1.5;
+
+    /* global base size (was ~16px); try 14px or 15px */
+    font-size: 12px;
+}
+
+.slidev-layout h2 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.35rem;
+}
+  
+.slidev-layout h3 {
+    padding-top: 0.35rem;
+    padding-bottom: 0.25rem;
+}

@@ -1,0 +1,186 @@
+version: '3'
+
+vars:
+  BINARY_NAME: server
+  BINARY_PATH: ./bin/{{.BINARY_NAME}}
+  MAIN_PATH: ./cmd/server/main.go
+  DOCKER_COMPOSE_FILE: docker-compose.yml
+
+tasks:
+  default:
+    desc: Run all checks (lint, test, build)
+    deps: [lint, test, build]
+
+  generate:
+    desc: Run go generate to generate mocks and other code
+    cmds:
+      - |
+        if ! command -v mockgen &> /dev/null; then
+          echo "mockgen is not installed. Installing..."
+          go install github.com/golang/mock/mockgen@latest
+        fi
+      - go generate ./...
+
+  generate-mocks:
+    desc: Generate mocks using gomock (alias for generate)
+    deps: [generate]
+
+  build:
+    desc: Build the Go application
+    cmds:
+      - mkdir -p bin
+      - go build -o {{.BINARY_PATH}} {{.MAIN_PATH}}
+    generates:
+      - "{{.BINARY_PATH}}"
+
+  run:
+    desc: Run the application (requires Qdrant to be running)
+    deps: [build]
+    cmds:
+      - |
+        if [ -z "$$OPENAI_API_KEY" ]; then
+          echo "Error: OPENAI_API_KEY environment variable is not set"
+          exit 1
+        fi
+        {{.BINARY_PATH}}
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - |
+        if ! command -v golangci-lint &> /dev/null; then
+          echo "golangci-lint is not installed. Installing..."
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+        fi
+      - golangci-lint run ./...
+
+  lint-fix:
+    desc: Run golangci-lint with auto-fix
+    cmds:
+      - |
+        if ! command -v golangci-lint &> /dev/null; then
+          echo "golangci-lint is not installed. Installing..."
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+        fi
+      - golangci-lint run --fix ./...
+
+  test:
+    desc: Run Go tests
+    cmds:
+      - go test -v -race -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+    generates:
+      - coverage.out
+      - coverage.html
+
+  test-short:
+    desc: Run Go tests (short mode)
+    cmds:
+      - go test -short -v ./...
+
+  test-coverage:
+    desc: Show test coverage
+    deps: [test]
+    cmds:
+      - go tool cover -func=coverage.out
+
+  docker-up:
+    desc: Start services using docker-compose (Qdrant only)
+    cmds:
+      - docker-compose -f {{.DOCKER_COMPOSE_FILE}} up -d qdrant
+      - echo "Waiting for Qdrant to be ready..."
+      - sleep 3
+      - echo "Qdrant should be running on http://localhost:6333"
+
+  docker-up-all:
+    desc: Start all services using docker-compose (Qdrant + App)
+    cmds:
+      - |
+        if [ -z "$$OPENAI_API_KEY" ]; then
+          echo "Error: OPENAI_API_KEY environment variable is not set"
+          exit 1
+        fi
+        docker-compose -f {{.DOCKER_COMPOSE_FILE}} up -d
+        echo "Services started:"
+        echo "  Qdrant: http://localhost:6333"
+        echo "  App: http://localhost:8080"
+
+  docker-down:
+    desc: Stop docker-compose services
+    cmds:
+      - docker-compose -f {{.DOCKER_COMPOSE_FILE}} down
+
+  docker-logs:
+    desc: Show docker-compose logs
+    cmds:
+      - docker-compose -f {{.DOCKER_COMPOSE_FILE}} logs -f
+
+  docker-restart:
+    desc: Restart docker-compose services
+    cmds:
+      - task: docker-down
+      - task: docker-up
+
+  docker-build:
+    desc: Build the Docker image for the app
+    cmds:
+      - docker-compose -f {{.DOCKER_COMPOSE_FILE}} build app
+
+  docker-logs-app:
+    desc: Show app logs from docker-compose
+    cmds:
+      - docker-compose -f {{.DOCKER_COMPOSE_FILE}} logs -f app
+
+  docker-ps:
+    desc: Show running docker-compose services
+    cmds:
+      - docker-compose -f {{.DOCKER_COMPOSE_FILE}} ps
+
+  dev:
+    desc: Start development environment (Qdrant + app locally)
+    cmds:
+      - task: docker-up
+      - task: run
+
+  dev-docker:
+    desc: Start development environment using docker-compose (Qdrant + App in containers)
+    cmds:
+      - task: docker-up-all
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf bin/
+      - rm -f coverage.out coverage.html
+      - go clean -cache
+
+  install-deps:
+    desc: Install Go dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  install-tools:
+    desc: Install development tools
+    cmds:
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - echo "Development tools installed"
+
+  check:
+    desc: Run all checks (lint, test, build) without running
+    deps: [lint, test, build]
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  all:
+    desc: Run format, vet, lint, test, and build
+    deps: [fmt, vet, lint, test, build]
+
