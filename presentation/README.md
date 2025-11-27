@@ -1,11 +1,33 @@
-# Welcome to [Slidev](https://github.com/slidevjs/slidev)!
+# Презентация "Go and LLM"
 
-To start the slide show:
+Презентация для вебинара "Go and LLM" курса Yandex Practicum "Advanced Go Development".
 
-- `pnpm install`
-- `pnpm dev`
-- visit <http://localhost:3030>
+## Запуск
 
-Edit the [slides.md](./slides.md) to see the changes.
+Для запуска презентации:
 
-Learn more about Slidev at the [documentation](https://sli.dev/).
+```bash
+# Установка зависимостей
+npm install
+
+# Запуск dev-сервера
+npm run dev
+
+# Откройте http://localhost:3030 в браузере
+```
+
+## Экспорт
+
+```bash
+# Экспорт в PDF
+npm run export
+
+# Сборка статического сайта
+npm run build
+```
+
+## Редактирование
+
+Редактируйте файл [slides.md](./slides.md) для изменения содержимого презентации.
+
+Подробнее о Slidev: [документация](https://sli.dev/).
